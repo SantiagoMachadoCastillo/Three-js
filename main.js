@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color( 0x111111 );
+scene.background = new THREE.Color( 0x007FFF);
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 const renderer = new THREE.WebGLRenderer();
@@ -25,6 +25,21 @@ const material = new THREE.MeshStandardMaterial({
 const cube = new THREE.Mesh(geometry, material);
 cube.position.set(0, 0, 0);
 scene.add(cube);
+
+// Suelo plano con textura de pasto (usa 'pasto minecraft.jpg')
+const loader = new THREE.TextureLoader();
+const grassTexture = loader.load('pasto minecraft.jpg');
+// repetir para cubrir una gran superficie
+grassTexture.wrapS = THREE.RepeatWrapping;
+grassTexture.wrapT = THREE.RepeatWrapping;
+grassTexture.repeat.set(32, 32);
+
+const planeGeom = new THREE.PlaneGeometry(50, 50);
+const planeMat = new THREE.MeshStandardMaterial({ map: grassTexture, color: 0x00ff00 });
+const floor = new THREE.Mesh(planeGeom, planeMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.5; // sitúa el plano justo bajo el cubo (cubo alto 1, centrado en y=0)
+scene.add(floor);
 
 // Controles de movimiento por teclado (flechas + WASD)
 const movement = { forward: false, back: false };
@@ -71,7 +86,7 @@ window.addEventListener('keyup', (e) => handleKey(e, false));
 const pointLight = new THREE.PointLight(  );
 pointLight.color.setHSL(0.0, 1.0, 0.75);
 pointLight.intensity = 50;
-pointLight.distance = 50;
+pointLight.distance = 1000;
 pointLight.angle = Math.PI / 8;
 pointLight.position.set( 2, 3, 0 );
 scene.add( pointLight );
@@ -83,7 +98,7 @@ scene.add( pointLightHelper );
 const spotLight = new THREE.SpotLight(  );
 spotLight.color.setHSL(0.0, 1.0, 0.75);
 spotLight.intensity = 20;
-spotLight.distance = 10;
+spotLight.distance = 1000;
 spotLight.angle = Math.PI / 8;
 spotLight.position.set( 2, 10, 0 );
 scene.add( spotLight );
