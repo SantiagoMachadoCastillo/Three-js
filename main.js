@@ -17,47 +17,61 @@ const geometry = new THREE.BoxGeometry( 1, 1, 1 );
 
 
 
-// CONFIGURACIÓN
-const columnas = 3;
-const filas = 3;
-const capas = 2;
+// CONFIGURACIÓN: un único cubo centrado (material estrictamente verde)
+const material = new THREE.MeshStandardMaterial({
+  color: 0x00ff00
+});
 
-const espacio = 1.4;
+const cube = new THREE.Mesh(geometry, material);
+cube.position.set(0, 0, 0);
+scene.add(cube);
 
-// GRUPO
-const grupo = new THREE.Group();
+// Controles de movimiento por teclado (flechas + WASD)
+const movement = { forward: false, back: false };
+const moveSpeed = 5; // unidades por segundo
+const turnAngle = 2 * Math.PI / 180; // 2° en radianes
+let _prevTime = 0;
 
-// CREAR LOS 18 CUBOS
-for (let z = 0; z < capas; z++) {
-  for (let y = 0; y < filas; y++) {
-    for (let x = 0; x < columnas; x++) {
-
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(
-          Math.random(),
-          Math.random(),
-          Math.random()
-        )
-      });
-
-      const cube = new THREE.Mesh(geometry, material);
-
-      cube.position.x = (x - 1) * espacio;
-      cube.position.y = (y - 1) * espacio;
-      cube.position.z = (z - 0.5) * espacio;
-
-      grupo.add(cube); 
-
-    }
-  }   
+function handleKey( event, isDown ) {
+  switch ( event.key ) {
+    case 'ArrowUp':
+    case 'w':
+    case 'W':
+      movement.forward = isDown;
+      event.preventDefault();
+      break;
+    case 'ArrowDown':
+    case 's':
+    case 'S':
+      movement.back = isDown;
+      event.preventDefault();
+      break;
+    case 'ArrowLeft':
+    case 'a':
+    case 'A':
+      if ( isDown ) {
+        cube.rotation.y += turnAngle;
+      }
+      event.preventDefault();
+      break;
+    case 'ArrowRight':
+    case 'd':
+    case 'D':
+      if ( isDown ) {
+        cube.rotation.y -= turnAngle;
+      }
+      event.preventDefault();
+      break;
+  }
 }
 
-scene.add(grupo);
+window.addEventListener('keydown', (e) => handleKey(e, true));
+window.addEventListener('keyup', (e) => handleKey(e, false));
 // white spotlight shining from the side, modulated by a texture
 const pointLight = new THREE.PointLight(  );
 pointLight.color.setHSL(0.0, 1.0, 0.75);
-pointLight.intensity = 20;
-pointLight.distance = 10;
+pointLight.intensity = 50;
+pointLight.distance = 50;
 pointLight.angle = Math.PI / 8;
 pointLight.position.set( 2, 3, 0 );
 scene.add( pointLight );
@@ -86,7 +100,16 @@ function animate( time ) {
 
   pointLightHelper.update();
   spotLightHelper.update();
-  pointLight.position.x = Math.sin( time / 1000 ) * 2;
+  // calcular delta de tiempo
+  if ( _prevTime === 0 ) _prevTime = time;
+  const delta = ( time - _prevTime ) / 1000;
+  _prevTime = time;
+
+  // movimiento hacia donde mira el cubo (eje local Z)
+  const velocity = moveSpeed * delta;
+  if ( movement.forward ) cube.translateZ( -velocity );
+  if ( movement.back ) cube.translateZ( velocity );
+
   controls.update();
 
 
