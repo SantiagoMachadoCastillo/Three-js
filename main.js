@@ -8,11 +8,18 @@ const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.inner
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setAnimationLoop( animate );
+// Habilitar sombras
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild( renderer.domElement );
-const controls = new OrbitControls( camera, renderer.domElement );
+const cameraOffset = new THREE.Vector3(
+0,
+4,
+8
+);
+const loader = new THREE.TextureLoader();
 
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+const geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 );
 
 
 
@@ -23,23 +30,57 @@ const material = new THREE.MeshStandardMaterial({
 });
 
 const cube = new THREE.Mesh(geometry, material);
-cube.position.set(0, 0, 0);
+cube.position.set(13, 0.25, 17);
+cube.rotation.y = Math.PI/2; // girar 180° para que mire hacia el inicio
+cube.castShadow = true; // el cubo proyecta sombras
 scene.add(cube);
 
-// Suelo plano con textura de pasto (usa 'pasto minecraft.jpg')
-const loader = new THREE.TextureLoader();
-const grassTexture = loader.load('pasto minecraft.jpg');
-// repetir para cubrir una gran superficie
-grassTexture.wrapS = THREE.RepeatWrapping;
-grassTexture.wrapT = THREE.RepeatWrapping;
-grassTexture.repeat.set(32, 32);
+// BASE DE CUBOS
+// ==========================
 
-const planeGeom = new THREE.PlaneGeometry(50, 50);
-const planeMat = new THREE.MeshStandardMaterial({ map: grassTexture, color: 0x00ff00 });
-const floor = new THREE.Mesh(planeGeom, planeMat);
-floor.rotation.x = -Math.PI / 2;
-floor.position.y = -0.5; // sitúa el plano justo bajo el cubo (cubo alto 1, centrado en y=0)
-scene.add(floor);
+const mapWidth = 80;
+const mapHeight = 45;
+
+for(let x = 0; x < mapWidth; x++) {
+    for(let z = 0; z < mapHeight; z++) {
+
+        const block = new THREE.Mesh(
+            new THREE.BoxGeometry(2,2,2),
+            new THREE.MeshStandardMaterial({
+                color: 0x6b8e23
+            })
+        );
+
+        block.position.set(
+            x - mapWidth / 2 + 0.5,
+            -1,
+            z - mapHeight / 2 + 0.5
+        );
+
+        block.receiveShadow = true;
+
+        scene.add(block);
+    }
+}
+
+// ==========================
+// IMAGEN DEL CIRCUITO
+// ==========================
+
+const trackTexture = loader.load('pista carrera.jpg');
+
+const trackPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(mapWidth, mapHeight),
+    new THREE.MeshStandardMaterial({
+        map: trackTexture
+    })
+);
+
+trackPlane.rotation.x = -Math.PI / 2;
+trackPlane.position.y = 0.01;
+trackPlane.receiveShadow = true;
+
+scene.add(trackPlane);
 
 // Controles de movimiento por teclado (flechas + WASD)
 const movement = { forward: false, back: false };
@@ -82,39 +123,35 @@ function handleKey( event, isDown ) {
 
 window.addEventListener('keydown', (e) => handleKey(e, true));
 window.addEventListener('keyup', (e) => handleKey(e, false));
-// white spotlight shining from the side, modulated by a texture
-const pointLight = new THREE.PointLight(  );
-pointLight.color.setHSL(0.0, 1.0, 0.75);
-pointLight.intensity = 50;
-pointLight.distance = 1000;
-pointLight.angle = Math.PI / 8;
-pointLight.position.set( 2, 3, 0 );
-scene.add( pointLight );
+const ambientLight = new THREE.AmbientLight(
+0xffffff,
+1.2
+);
 
-const pointLightHelper = new THREE.PointLightHelper( pointLight );
-scene.add( pointLightHelper );
+scene.add(ambientLight);
 
+const sun = new THREE.DirectionalLight(
+0xffffff,
+2
+);
 
-const spotLight = new THREE.SpotLight(  );
-spotLight.color.setHSL(0.0, 1.0, 0.75);
-spotLight.intensity = 20;
-spotLight.distance = 1000;
-spotLight.angle = Math.PI / 8;
-spotLight.position.set( 2, 10, 0 );
-scene.add( spotLight );
+sun.position.set(50, 80, 50);
 
-const spotLightHelper = new THREE.SpotLightHelper( spotLight );
-scene.add( spotLightHelper );
+sun.castShadow = true;
+
+sun.shadow.mapSize.width = 4096;
+sun.shadow.mapSize.height = 4096;
+
+scene.add(sun);
 
 
 camera.position.z = 5;
 camera.position.y = 5;
 
+renderer.setAnimationLoop( animate );
+
 function animate( time ) {
 
-
-  pointLightHelper.update();
-  spotLightHelper.update();
   // calcular delta de tiempo
   if ( _prevTime === 0 ) _prevTime = time;
   const delta = ( time - _prevTime ) / 1000;
@@ -125,7 +162,22 @@ function animate( time ) {
   if ( movement.forward ) cube.translateZ( -velocity );
   if ( movement.back ) cube.translateZ( velocity );
 
-  controls.update();
+  const desiredCameraPosition =
+    cameraOffset.clone()
+    .applyQuaternion(cube.quaternion)
+    .add(cube.position);
+
+camera.position.lerp(
+    desiredCameraPosition,
+    0.08
+);
+
+camera.lookAt(
+    cube.position.x,
+    cube.position.y + 0.5,
+    cube.position.z
+); 
+
 
 
   //cube.rotation.x = time / 2000;
